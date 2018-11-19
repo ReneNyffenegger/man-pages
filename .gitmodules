@@ -1,0 +1,3 @@
+[submodule "src/git.kernel.org/man-pages"]
+	path = src/git.kernel.org/man-pages
+	url = http://git.kernel.org/pub/scm/docs/man-pages/man-pages
