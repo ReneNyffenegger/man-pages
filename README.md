@@ -4,7 +4,7 @@ src/git.kernel.org/man-pages: submodule from https://git.kernel.org/pub/scm/docs
 
 ## After cloning repo
 
-    git submodule update --init --recursive{
+    git submodule update --init --recursive
 
 ## Updating submodules
 
