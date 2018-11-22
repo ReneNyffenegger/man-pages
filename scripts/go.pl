@@ -59,6 +59,9 @@ sub parse_man_page {
   my $last_line_was_TH             = 0;
   my $first_line_with_content_seen = 0;
 
+  if (! exists $man_pages{$name_dot_section}) {
+     $man_pages{$name_dot_section} = {};
+  }
 
   open (my $man_page_fh, '<', $name_dot_section) or die;
 
@@ -83,6 +86,21 @@ sub parse_man_page {
         
           if ($line =~ /^.TH/) {
              $last_line_was_TH = 1;
+             my ($title_manpage, $sect, $yyyy, $mm, $dd, $src, $title_manual);
+             if ( 
+                  ($title_manpage, $sect, $yyyy, $mm, $dd, $src, $title_manual) = $line =~ /^.TH (\S+) +(\d) +(\d\d\d\d)-(\d\d)-(\d\d) +"([^"]*)" +"([^"]*)"/ or
+                  ($title_manpage, $sect, $yyyy, $mm, $dd, $src, $title_manual) = $line =~ /^.TH (\S+) +(\d) +(\d\d\d\d)-(\d\d)-(\d\d) +(\S+) +"([^"]*)"/
+                )
+                {
+                  $man_pages{$name_dot_section}{date} = "$yyyy-$mm-$dd";
+#                 print "$yyyy-$mm-$dd\n";
+                }
+                else {
+                #
+                # Could not parse .TH...
+                #
+  #               print $line;
+                }
           }
           elsif ($line =~ /^\.so/) {
             
@@ -91,13 +109,7 @@ sub parse_man_page {
               chomp $line;
 
              (my $page_ref = $line) =~ s!.*/(.*)!$1!;
-#             print $line, "; ", $page_ref, "\n";
-#             my ($name_ref, $section_ref) = $page_ref =~ m!(.*)\.(\d)!;
-#             print ".so: $name_dot_section -> $name_ref, $section_ref\n";
 
-                if (! exists $man_pages{$name_dot_section}) {
-                   $man_pages{$name_dot_section} = {};
-                }
 
                 push @{$man_pages{$page_ref}{so_by}}, $name_dot_section; # $man_pages{$name_dot_section};
                 $man_pages{$name_dot_section}{so} = $page_ref;# $man_pages{$page_ref};
@@ -124,6 +136,7 @@ sub parse_man_page {
     my ($page_name, $section) = $name_dot_section =~ m!(.*)\.(\d)!;
     print $html_fh "$page_name ($section)\n";
 
+
     if (exists $man_pages{$name_dot_section}{so_by}) {
       print $html_fh "- referred by:";
       for my $page_so_by ( @{$man_pages{$name_dot_section}{so_by}} ) {
@@ -137,6 +150,9 @@ sub parse_man_page {
        print $html_fh ": see <a href='$man_pages{$name_dot_section}{so}.html'>$n ($s)</a>";
     }
 
+    if (exists $man_pages{$name_dot_section}{date}) {
+      print $html_fh "<br><b>Date:</b> $man_pages{$name_dot_section}{date}\n";
+    }
 
     close $html_fh;
 
