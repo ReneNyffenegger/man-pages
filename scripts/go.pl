@@ -15,6 +15,8 @@ sub main {
   pass(1);
   pass(2);
 
+  html_index();
+
 }
 sub pass {
   $pass = shift;
@@ -58,6 +60,8 @@ sub parse_man_page {
   my $TH_seen                      = 0;
   my $last_line_was_TH             = 0;
   my $first_line_with_content_seen = 0;
+  my $SH_NAME_expected             = 0;
+  my $NAME_text_expected           = 0;
 
   if (! exists $man_pages{$name_dot_section}) {
      $man_pages{$name_dot_section} = {};
@@ -79,7 +83,7 @@ sub parse_man_page {
       $line =~ s/\\".*//;
       $line =~ s/\.$//;
 
-      unless ($first_line_with_content_seen) {
+      if (! $first_line_with_content_seen) {
 
         # First line with content should either be a .TH line or source
         # another man page with the .so instruction.
@@ -93,7 +97,7 @@ sub parse_man_page {
                 )
                 {
                   $man_pages{$name_dot_section}{date} = "$yyyy-$mm-$dd";
-#                 print "$yyyy-$mm-$dd\n";
+  #               print "$yyyy-$mm-$dd\n";
                 }
                 else {
                 #
@@ -101,6 +105,7 @@ sub parse_man_page {
                 #
   #               print $line;
                 }
+            $SH_NAME_expected = 1;
           }
           elsif ($line =~ /^\.so/) {
             
@@ -109,7 +114,6 @@ sub parse_man_page {
               chomp $line;
 
              (my $page_ref = $line) =~ s!.*/(.*)!$1!;
-
 
                 push @{$man_pages{$page_ref}{so_by}}, $name_dot_section; # $man_pages{$name_dot_section};
                 $man_pages{$name_dot_section}{so} = $page_ref;# $man_pages{$page_ref};
@@ -121,12 +125,33 @@ sub parse_man_page {
             next; # suffixes (7)
           }
           else {
-            print "$name_dot_section does not start with .TH not .so: $line ($.)\n" unless $line =~ /^\.TH/;
+            #
+            # TODO later:
+            #
+            # print "$name_dot_section does not start with .TH not .so: $line ($.)\n" unless $line =~ /^\.TH/;
           }
 
           $first_line_with_content_seen = 1;
 
       }
+      elsif ($SH_NAME_expected) {
+
+        if (! $line =~ /^.SH NAME/) {
+          print $name_dot_section, ': ', $line;
+
+        }
+        $SH_NAME_expected   = 0;
+        $NAME_text_expected = 1;
+
+      }
+      elsif ($NAME_text_expected) {
+        my ($name_pre, $name_text) = $line =~ /(.*) +\\- +(.*)/;
+        $man_pages{$name_dot_section}{name_text} = $name_text;
+#       print $line;
+        $NAME_text_expected = 0;
+
+      }
+
 
   }
   if ($pass == 2) {
@@ -136,13 +161,15 @@ sub parse_man_page {
     my ($page_name, $section) = $name_dot_section =~ m!(.*)\.(\d)!;
     print $html_fh "$page_name ($section)\n";
 
+    if (my $name_text = $man_pages{$name_dot_section}{name_text}) {
+       print $html_fh " - <i>$name_text</i>";
+    }
 
     if (exists $man_pages{$name_dot_section}{so_by}) {
-      print $html_fh "- referred by:";
+      print $html_fh "<br> referred by:";
       for my $page_so_by ( @{$man_pages{$name_dot_section}{so_by}} ) {
          my ($n, $s) = $page_so_by =~ m!(.*)\.(\d)!;
          print $html_fh " <a href='$page_so_by.html'>$n ($s)</a>";
-
       }
     }
     if (exists $man_pages{$name_dot_section}{so}) {
@@ -158,4 +185,19 @@ sub parse_man_page {
 
   }
 
+}
+
+sub html_index {
+
+  open my $html_fh, '>', "$out_dir/index.html" or die;
+
+  for my $name_dot_section (sort keys %man_pages) {
+     print $html_fh "\n<br><a href='$name_dot_section.html'>$name_dot_section</a>";
+
+     if (my $name_text = $man_pages{$name_dot_section}{name_text}) {
+       print $html_fh ": <i>$name_text</i>";
+     }
+  }
+
+  close $html_fh;
 }
