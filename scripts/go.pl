@@ -1,7 +1,9 @@
 #!/usr/bin/perl
 #
 #   TODO
-#      getnetent.3  (NAME spans over two lines)
+#      getnetent.3 / memmove.3  (NAME spans over two lines)
+#
+#      memmove.3  /             (Linebreak in SYNOPSIS)
 #
 use warnings;
 use strict;
@@ -229,7 +231,7 @@ sub parse_man_page {
           for my $arg (@args) {
 
             if ($b) {
-              $l .= "<b>$arg </b>"
+              $l .= "<b>$arg</b>"
             }
             else {
               $l .= "<i>$arg</i>"
@@ -241,6 +243,22 @@ sub parse_man_page {
 #         push @lines, 'xxx ' . (join ' -- ', @args);
 
 #         push @lines, "<b>$bold</b>";
+        }
+        next;
+      }
+      elsif (my ($rest_br) = $line =~ /^\.BR +(.*)$/) {
+
+        if (my ($func, $sect, $what_is_this) = $rest_br =~ /^ *(\S+) +\((\d?)\) *(.*)$/) {
+
+          if ($sect) {
+            push @lines, "<a href='$func.$sect.html'>$func($sect)</a>$what_is_this ";
+          }
+          else {
+            push @lines, "<code>$func()$what_is_this</code> ";
+          }
+        }
+        else {
+           push @lines, "<code>$rest_br</code>";
         }
         next;
       }
@@ -364,6 +382,7 @@ sub parse_man_page {
 #     }
 #   }
 
+    print $html_fh "<hr><a href='index.html'>Man page index</a>";
     close $html_fh;
 
   }
@@ -459,6 +478,6 @@ sub html_index {
        print $html_fh ": <i>$name_text</i>";
      }
   }
-
+  
   close $html_fh;
 }
