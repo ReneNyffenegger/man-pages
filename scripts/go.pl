@@ -1,4 +1,8 @@
 #!/usr/bin/perl
+#
+#   TODO
+#      getnetent.3  (NAME spans over two lines)
+#
 use warnings;
 use strict;
 
@@ -62,9 +66,21 @@ sub parse_man_page {
   my $first_line_with_content_seen = 0;
   my $SH_NAME_expected             = 0;
   my $NAME_text_expected           = 0;
+# my $name_of_cur_section          = 0;
+  my $cur_section;
+# my $is_in_SYNOPSIS               = 0;
+# my $is_in_DESCRIPTION            = 0;
+# my $is_in_SEE_ALSO               = 0;
 
-  if (! exists $man_pages{$name_dot_section}) {
-     $man_pages{$name_dot_section} = {};
+  my @lines;
+# my @lines_description;
+# my @lines_synopsis;
+# my @lines_see_also;
+
+  if ($pass == 1) {
+    if (! exists $man_pages{$name_dot_section}) {
+       $man_pages{$name_dot_section} = {};
+    }
   }
 
   open (my $man_page_fh, '<', $name_dot_section) or die;
@@ -77,6 +93,8 @@ sub parse_man_page {
       next if $line =~ /^\\" Copyright/;
       next if $line =~ /\\t$/;
     }
+
+    $line = encode_html($line);
 
     # Remove comments
       next if $line =~ m!^\.\\"!;
@@ -136,19 +154,84 @@ sub parse_man_page {
       }
       elsif ($SH_NAME_expected) {
 
-        if (! $line =~ /^.SH NAME/) {
+        if (! $line =~ /^.SH +NAME/) {
           print $name_dot_section, ': ', $line;
-
         }
         $SH_NAME_expected   = 0;
         $NAME_text_expected = 1;
 
       }
       elsif ($NAME_text_expected) {
-        my ($name_pre, $name_text) = $line =~ /(.*) +\\- +(.*)/;
-        $man_pages{$name_dot_section}{name_text} = $name_text;
-#       print $line;
+
+        if ($pass == 1) {
+          my ($name_pre, $name_text) = $line =~ /(.*) +\\- +(.*)/;
+          $man_pages{$name_dot_section}{name_text} = $name_text;
+#         print $line;
+        }
         $NAME_text_expected = 0;
+
+      }
+#     elsif ($line =~ /^.SH +SYNOPSIS\b/) {
+#       $is_in_SYNOPSIS    = 1;
+#       $is_in_DESCRIPTION = 0;
+#       $is_in_SEE_ALSO    = 0;
+#       next;
+#     }
+#     elsif ($line =~ /^.SH +DESCRIPTION\b/) {
+#       $is_in_DESCRIPTION = 1;
+#       $is_in_SYNOPSIS    = 0;
+#       $is_in_SEE_ALSO    = 0;
+#       next;
+#     }
+#     elsif ($line =~ /^.SH +SEE +ALSO\b/) {
+#       $is_in_SEE_ALSO    = 1;
+#       $is_in_DESCRIPTION = 0;
+#       $is_in_SYNOPSIS    = 0;
+#       next;
+#     }
+      elsif ( my ($sect) = $line =~ /^.SH +(.*)/) {
+        $cur_section = $sect;
+
+        if ($pass == 2) {
+          push @{$man_pages{$name_dot_section}{sections}}, $sect;
+          push @lines, "<h1 id='$sect'>$sect</h1>";
+        }
+        next;
+
+
+#       $is_in_SEE_ALSO    = 0;
+#       $is_in_DESCRIPTION = 0;
+#       $is_in_SYNOPSIS    = 0;
+
+#       push @lines, "<h1>" . encode_html($sect) . "</h1>";
+#       next;
+
+      }
+      else {
+        if ($pass == 2) {
+          push @lines, $line;
+
+        }
+
+#       push @{$man_pages{$name_dot_section}{sections}{$, {$name_of_cur_section}}, $line;
+
+#       if (my ($other_man_page) = $line =~ /^.BR +(.*)/) {
+#         if 
+#       }
+
+
+#       if ($is_in_SYNOPSIS) {
+#         push @lines_synopsis, encode_html($line);
+#       }
+#       elsif ($is_in_DESCRIPTION) {
+#         push @lines_description, encode_html($line);
+#       }
+#       elsif ($is_in_SEE_ALSO) {
+#         push @lines_see_also, encode_html($line);
+#       }
+#       else {
+#         push @lines, encode_html($line);
+#       }
 
       }
 
@@ -181,9 +264,43 @@ sub parse_man_page {
       print $html_fh "<br><b>Date:</b> $man_pages{$name_dot_section}{date}\n";
     }
 
+#   if (@lines_synopsis) {
+#     print $html_fh "<h1>Synopsis</h1>";
+#     for my $line (@lines_synopsis) {
+#       print $html_fh "<br>$line";
+#     }
+#   }
+#   if (@lines_description) {
+#     print $html_fh "<h1>Description</h1>";
+#     for my $line (@lines_description) {
+#       print $html_fh "<br>$line";
+#     }
+#   }
+
+    for my $line (@lines) {
+      print $html_fh "<br>$line";
+    }
+
+#   if (@lines_see_also) {
+#     print $html_fh "<h1>See also</h1>";
+#     for my $line (@lines_see_also) {
+#       print $html_fh "<br>$line";
+#     }
+#   }
+
     close $html_fh;
 
   }
+
+}
+sub encode_html {
+  my $text = shift;
+
+  $text =~ s/&/&amp;/g;
+  $text =~ s/</&lt;/g;
+  $text =~ s/>/&gt;/g;
+
+  return $text;
 
 }
 
