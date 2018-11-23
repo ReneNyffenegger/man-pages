@@ -210,9 +210,9 @@ sub parse_man_page {
         }
         next;
       }
-      elsif ($line =~ /^\.B$/i) {
+      elsif (my ($bold) = $line =~ /^\.B +(.*)$/i) {
         if ($pass == 2) {
-          push @lines, '<b>$line</b>';
+          push @lines, "<b>$bold</b>";
         }
         next;
       }
