@@ -71,6 +71,7 @@ sub parse_man_page {
 # my $is_in_SYNOPSIS               = 0;
 # my $is_in_DESCRIPTION            = 0;
 # my $is_in_SEE_ALSO               = 0;
+  my $in_pre                       = 0;
 
   my @lines;
 # my @lines_description;
@@ -189,6 +190,40 @@ sub parse_man_page {
 #       $is_in_SYNOPSIS    = 0;
 #       next;
 #     }
+      elsif ($line =~ /^.nf$/i) {
+      #
+      # Start no-fill mode:
+      #
+        if ($pass == 2) {
+          push @lines, '<pre>';
+          $in_pre = 1;
+        }
+        next;
+      }
+      elsif ($line =~ /^.fi$/i) {
+      #
+      # End nof-fill mode
+      #
+        if ($pass == 2) {
+          push @lines, '</pre>';
+          $in_pre = 0;
+        }
+        next;
+      }
+      elsif ($line =~ /^.(PP|LP|P)$/i) {
+      #
+      #  PP = LP = P:
+      #    - Cause line break and vertical space downwards by
+      #      amount of PD macro.
+      #    - Reset font-size and font-shape to default (10pt roman)
+      #      unless -rS option is given on command line
+      #    - restore left margin and indentation
+      #
+        if ($pass == 2) {
+          push @lines, '<p>';
+        }
+        next;
+      }
       elsif ( my ($sect) = $line =~ /^.SH +(.*)/) {
         $cur_section = $sect;
 
@@ -209,7 +244,14 @@ sub parse_man_page {
       }
       else {
         if ($pass == 2) {
-          push @lines, $line;
+          
+          if ($in_pre) {
+            push @lines, $line;
+          }
+          else {
+            push @lines, "<br>$line";
+          }
+          next;
 
         }
 
@@ -278,7 +320,7 @@ sub parse_man_page {
 #   }
 
     for my $line (@lines) {
-      print $html_fh "<br>$line";
+      print $html_fh "$line";
     }
 
 #   if (@lines_see_also) {
