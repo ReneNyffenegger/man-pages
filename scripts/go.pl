@@ -155,7 +155,7 @@ sub parse_man_page {
       }
       elsif ($SH_NAME_expected) {
 
-        if (! $line =~ /^.SH +NAME/) {
+        if (! $line =~ /^\.SH +NAME/) {
           print $name_dot_section, ': ', $line;
         }
         $SH_NAME_expected   = 0;
@@ -190,7 +190,7 @@ sub parse_man_page {
 #       $is_in_SYNOPSIS    = 0;
 #       next;
 #     }
-      elsif ($line =~ /^.nf$/i) {
+      elsif ($line =~ /^\.nf$/i) {
       #
       # Start no-fill mode:
       #
@@ -200,7 +200,7 @@ sub parse_man_page {
         }
         next;
       }
-      elsif ($line =~ /^.fi$/i) {
+      elsif ($line =~ /^\.fi$/i) {
       #
       # End nof-fill mode
       #
@@ -210,7 +210,13 @@ sub parse_man_page {
         }
         next;
       }
-      elsif ($line =~ /^.(PP|LP|P)$/i) {
+      elsif ($line =~ /^\.B$/i) {
+        if ($pass == 2) {
+          push @lines, '<b>$line</b>';
+        }
+        next;
+      }
+      elsif ($line =~ /^\.(PP|LP|P)$/i) {
       #
       #  PP = LP = P:
       #    - Cause line break and vertical space downwards by
@@ -224,7 +230,7 @@ sub parse_man_page {
         }
         next;
       }
-      elsif ( my ($sect) = $line =~ /^.SH +(.*)/) {
+      elsif ( my ($sect) = $line =~ /^\.SH +(.*)/) {
         $cur_section = $sect;
 
         if ($pass == 2) {
