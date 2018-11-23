@@ -12,7 +12,9 @@ my %man_pages;
 my $pass;
 my $out_dir = '/home/rene/github/github/man-pages/out/';
 
+# arguments_test(); exit;
 main();
+
 
 sub main {
 
@@ -216,6 +218,32 @@ sub parse_man_page {
         }
         next;
       }
+      elsif (my ($rest) = $line =~ /^\.BI +(.*)$/i) {
+        if ($pass == 2) {
+
+          my @args = arguments($rest);
+
+          my $b = 1;
+
+          my $l = '';
+          for my $arg (@args) {
+
+            if ($b) {
+              $l .= "<b>$arg </b>"
+            }
+            else {
+              $l .= "<i>$arg</i>"
+            }
+            $b = 1-$b;
+          }
+          push @lines, $l;
+
+#         push @lines, 'xxx ' . (join ' -- ', @args);
+
+#         push @lines, "<b>$bold</b>";
+        }
+        next;
+      }
       elsif ($line =~ /^\.(PP|LP|P)$/i) {
       #
       #  PP = LP = P:
@@ -349,6 +377,74 @@ sub encode_html {
   $text =~ s/>/&gt;/g;
 
   return $text;
+
+}
+
+sub arguments_test {
+
+  my @parts = arguments('"void bzero(void *" s ", size_t " n );');
+
+  die join ' - ', @parts unless @parts eq 5;
+  die unless $parts[0] eq 'void bzero(void *';
+  die unless $parts[1] eq 's';
+  die unless $parts[2] eq ', size_t';
+  die unless $parts[3] eq 'n';
+  die unless $parts[4] eq ');';
+
+}
+
+sub arguments {
+  my $text = shift;
+
+  my @ret = ();
+
+  my $next_is_escaped = 0;
+  my $within_quotes   = 0;
+  my $part = '';
+  my $within_unquoted_token = 0;
+  
+  for my $c (split //, $text) {
+
+    if ($next_is_escaped) {
+      $part .= $c;
+      $next_is_escaped = 0;
+    }
+    elsif ($c eq '\\') {
+      $next_is_escaped = 1;
+    }
+    elsif ($c eq '"') {
+
+      if ($within_quotes) {
+#       print "\" and within quotes, returning $part<\n";
+        push @ret, $part;
+        $part = '';
+        $within_quotes = 0;
+        $within_unquoted_token = 0;
+      }
+      else {
+        $within_quotes = 1; 
+      }
+    }
+    elsif ($within_quotes) {
+      $part .= $c;
+    }
+    elsif ($c eq ' ') {
+      if ($within_unquoted_token) {
+#       print "_ and within_unquoted_token, returning $part<\n";
+        push @ret, $part;
+        $part = '';
+        $within_unquoted_token = 0;
+
+     }
+    # $next_non_whitespace_starts_token = 0;
+    }
+    else {
+      $within_unquoted_token = 1;
+      $part .= $c;
+    }
+  }
+  push @ret, $part;
+  return @ret;
 
 }
 
