@@ -5,10 +5,15 @@
 #
 #      memmove.3  /             (Linebreak in SYNOPSIS)
 #
+#      CPU_SET.3                (" in SYNOPSIS?)
+#
+#      math_error.7             (Newlines in SYNOPSIS)
+#
 use warnings;
 use strict;
 
 use File::Find;
+use Cwd qw(cwd getcwd);
 
 my %man_pages;
 my $pass;
@@ -34,6 +39,8 @@ sub pass {
 #      preprocess => \&find_preprocess_callback
      }, 'src/git.kernel.org/man-pages'
   );
+
+
 }
 
 # sub find_preprocess_callback {
@@ -57,11 +64,13 @@ sub find_callback {
   return unless $_ =~ /\.\d$/;
 
 # print "Parsing $File::Find::name\n";
-  parse_man_page($_);
+  parse_man_page($_)
+#   if $File::Find::name =~ /bzero.3$/
+  ;
 }
 
 
-sub parse_man_page {
+sub parse_man_page { #_{
 
   my $name_dot_section = shift;
 
@@ -70,6 +79,7 @@ sub parse_man_page {
   my $first_line_with_content_seen = 0;
   my $SH_NAME_expected             = 0;
   my $NAME_text_expected           = 0;
+  my $NAME_text_1st_line_seen      = 0;
 # my $name_of_cur_section          = 0;
   my $cur_section;
 # my $is_in_SYNOPSIS               = 0;
@@ -82,22 +92,22 @@ sub parse_man_page {
 # my @lines_synopsis;
 # my @lines_see_also;
 
-  if ($pass == 1) {
+  if ($pass == 1) { #_{
     if (! exists $man_pages{$name_dot_section}) {
        $man_pages{$name_dot_section} = {};
     }
-  }
+  } #_}
 
-  open (my $man_page_fh, '<', $name_dot_section) or die;
+  open (my $man_page_fh, '<', $name_dot_section) or die "Could not open $name_dot_section, dir = " . getcwd();
 
-  while (my $line = <$man_page_fh>) {
+  while (my $line = <$man_page_fh>) { #_{
 
-    if ($. == 1) {
+    if ($. == 1) { #_{
       next if $line =~ /^'\\" t\b/;
       next if $line =~ /^ *$/;
       next if $line =~ /^\\" Copyright/;
       next if $line =~ /\\t$/;
-    }
+    } #_}
 
     $line = encode_html($line);
 
@@ -106,12 +116,14 @@ sub parse_man_page {
       $line =~ s/\\".*//;
       $line =~ s/\.$//;
 
-      if (! $first_line_with_content_seen) {
+      if (! $first_line_with_content_seen) { #_{
+
+        $first_line_with_content_seen = 1;
 
         # First line with content should either be a .TH line or source
         # another man page with the .so instruction.
         
-          if ($line =~ /^.TH/) {
+          if ($line =~ /^.TH/) { #_{
              $last_line_was_TH = 1;
              my ($title_manpage, $sect, $yyyy, $mm, $dd, $src, $title_manual);
              if ( 
@@ -120,17 +132,16 @@ sub parse_man_page {
                 )
                 {
                   $man_pages{$name_dot_section}{date} = "$yyyy-$mm-$dd";
-  #               print "$yyyy-$mm-$dd\n";
                 }
                 else {
                 #
                 # Could not parse .TH...
                 #
-  #               print $line;
                 }
             $SH_NAME_expected = 1;
-          }
-          elsif ($line =~ /^\.so/) {
+            next;
+          } #_}
+          elsif ($line =~ /^\.so/) { #_{
             
             if ($pass == 1) {
 
@@ -143,39 +154,51 @@ sub parse_man_page {
 
             }
 
-          }
-          elsif ($line =~ /^\.if n \.pl 1000v$/) {
+          } #_}
+          elsif ($line =~ /^\.if n \.pl 1000v$/) { #_{
             next; # suffixes (7)
-          }
-          else {
+          } #_}
+          else { #_{
             #
             # TODO later:
             #
             # print "$name_dot_section does not start with .TH not .so: $line ($.)\n" unless $line =~ /^\.TH/;
-          }
+          } #_}
 
-          $first_line_with_content_seen = 1;
 
-      }
-      elsif ($SH_NAME_expected) {
+      } #_}
+      elsif ($SH_NAME_expected) { #_{
 
         if (! $line =~ /^\.SH +NAME/) {
           print $name_dot_section, ': ', $line;
         }
         $SH_NAME_expected   = 0;
         $NAME_text_expected = 1;
+        next;
 
-      }
-      elsif ($NAME_text_expected) {
+      } #_}
+      elsif ($NAME_text_expected) { #_{
 
-        if ($pass == 1) {
+        if (!$NAME_text_1st_line_seen) {
           my ($name_pre, $name_text) = $line =~ /(.*) +\\- +(.*)/;
-          $man_pages{$name_dot_section}{name_text} = $name_text;
-#         print $line;
-        }
-        $NAME_text_expected = 0;
 
-      }
+          if ($pass == 1) {
+            $man_pages{$name_dot_section}{name_text} = $name_text;
+          }
+          $NAME_text_1st_line_seen = 1;
+          next;
+        }
+        if ($line =~ /^\./) {
+          $NAME_text_expected = 0;
+        }
+        else {
+          if ($pass == 1) {
+            $man_pages{$name_dot_section}{name_text} .= " $line";
+          }
+          next;
+        }
+
+      } #_}
 #     elsif ($line =~ /^.SH +SYNOPSIS\b/) {
 #       $is_in_SYNOPSIS    = 1;
 #       $is_in_DESCRIPTION = 0;
@@ -194,7 +217,7 @@ sub parse_man_page {
 #       $is_in_SYNOPSIS    = 0;
 #       next;
 #     }
-      elsif ($line =~ /^\.nf$/i) {
+      if ($line =~ /^\.nf$/i) { #_{
       #
       # Start no-fill mode:
       #
@@ -203,8 +226,8 @@ sub parse_man_page {
           $in_pre = 1;
         }
         next;
-      }
-      elsif ($line =~ /^\.fi$/i) {
+      } #_}
+      elsif ($line =~ /^\.fi$/i) { #_{
       #
       # End nof-fill mode
       #
@@ -213,14 +236,14 @@ sub parse_man_page {
           $in_pre = 0;
         }
         next;
-      }
-      elsif (my ($bold) = $line =~ /^\.B +(.*)$/i) {
+      } #_}
+      elsif (my ($bold) = $line =~ /^\.B +(.*)$/i) { #_{
         if ($pass == 2) {
           push @lines, "<b>$bold</b>";
         }
         next;
-      }
-      elsif (my ($rest) = $line =~ /^\.BI +(.*)$/i) {
+      } #_}
+      elsif (my ($rest) = $line =~ /^\.BI +(.*)$/i) { #_{
         if ($pass == 2) {
 
           my @args = arguments($rest);
@@ -245,8 +268,8 @@ sub parse_man_page {
 #         push @lines, "<b>$bold</b>";
         }
         next;
-      }
-      elsif (my ($rest_br) = $line =~ /^\.BR +(.*)$/) {
+      } #_}
+      elsif (my ($rest_br) = $line =~ /^\.BR +(.*)$/) { #_{
 
         if (my ($func, $sect, $what_is_this) = $rest_br =~ /^ *(\S+) +\((\d?)\) *(.*)$/) {
 
@@ -261,8 +284,8 @@ sub parse_man_page {
            push @lines, "<code>$rest_br</code>";
         }
         next;
-      }
-      elsif ($line =~ /^\.(PP|LP|P)$/i) {
+      } #_}
+      elsif ($line =~ /^\.(PP|LP|P)$/i) { #_{
       #
       #  PP = LP = P:
       #    - Cause line break and vertical space downwards by
@@ -275,8 +298,8 @@ sub parse_man_page {
           push @lines, '<p>';
         }
         next;
-      }
-      elsif ( my ($sect) = $line =~ /^\.SH +(.*)/) {
+      } #_}
+      elsif ( my ($sect) = $line =~ /^\.SH +(.*)/) { #_{
         $cur_section = $sect;
 
         if ($pass == 2) {
@@ -293,9 +316,9 @@ sub parse_man_page {
 #       push @lines, "<h1>" . encode_html($sect) . "</h1>";
 #       next;
 
-      }
-      else {
-        if ($pass == 2) {
+      } #_}
+      else { #_{
+        if ($pass == 2) { #_{
           
           if ($in_pre) {
             push @lines, $line;
@@ -305,7 +328,7 @@ sub parse_man_page {
           }
           next;
 
-        }
+        } #_}
 
 #       push @{$man_pages{$name_dot_section}{sections}{$, {$name_of_cur_section}}, $line;
 
@@ -327,36 +350,36 @@ sub parse_man_page {
 #         push @lines, encode_html($line);
 #       }
 
-      }
+      } #_}
 
 
-  }
-  if ($pass == 2) {
+  } #_}
+  if ($pass == 2) { #_{
 
     open my $html_fh, '>', "$out_dir/$name_dot_section.html" or die;
 
     my ($page_name, $section) = $name_dot_section =~ m!(.*)\.(\d)!;
     print $html_fh "$page_name ($section)\n";
 
-    if (my $name_text = $man_pages{$name_dot_section}{name_text}) {
+    if (my $name_text = $man_pages{$name_dot_section}{name_text}) { #_{
        print $html_fh " - <i>$name_text</i>";
-    }
+    } #_}
 
-    if (exists $man_pages{$name_dot_section}{so_by}) {
+    if (exists $man_pages{$name_dot_section}{so_by}) { #_{
       print $html_fh "<br> referred by:";
       for my $page_so_by ( @{$man_pages{$name_dot_section}{so_by}} ) {
          my ($n, $s) = $page_so_by =~ m!(.*)\.(\d)!;
          print $html_fh " <a href='$page_so_by.html'>$n ($s)</a>";
       }
-    }
-    if (exists $man_pages{$name_dot_section}{so}) {
+    } #_}
+    if (exists $man_pages{$name_dot_section}{so}) { #_{
        my ($n, $s) = $man_pages{$name_dot_section}{so} =~ m!(.*)\.(\d)!;
        print $html_fh ": see <a href='$man_pages{$name_dot_section}{so}.html'>$n ($s)</a>";
-    }
+    } #_}
 
-    if (exists $man_pages{$name_dot_section}{date}) {
+    if (exists $man_pages{$name_dot_section}{date}) { #_{
       print $html_fh "<br><b>Date:</b> $man_pages{$name_dot_section}{date}\n";
-    }
+    } #_}
 
 #   if (@lines_synopsis) {
 #     print $html_fh "<h1>Synopsis</h1>";
@@ -371,9 +394,9 @@ sub parse_man_page {
 #     }
 #   }
 
-    for my $line (@lines) {
+    for my $line (@lines) { #_{
       print $html_fh "$line";
-    }
+    } #_}
 
 #   if (@lines_see_also) {
 #     print $html_fh "<h1>See also</h1>";
@@ -385,7 +408,7 @@ sub parse_man_page {
     print $html_fh "<hr><a href='index.html'>Man page index</a>";
     close $html_fh;
 
-  }
+  } #_}
 
 }
 sub encode_html {
@@ -397,9 +420,9 @@ sub encode_html {
 
   return $text;
 
-}
+} #_}
 
-sub arguments_test {
+sub arguments_test { #_{
 
   my @parts = arguments('"void bzero(void *" s ", size_t " n );');
 
@@ -410,9 +433,9 @@ sub arguments_test {
   die unless $parts[3] eq 'n';
   die unless $parts[4] eq ');';
 
-}
+} #_}
 
-sub arguments {
+sub arguments { #_{
   my $text = shift;
 
   my @ret = ();
@@ -465,9 +488,9 @@ sub arguments {
   push @ret, $part;
   return @ret;
 
-}
+} #_}
 
-sub html_index {
+sub html_index { #_{
 
   open my $html_fh, '>', "$out_dir/index.html" or die;
 
@@ -480,4 +503,4 @@ sub html_index {
   }
   
   close $html_fh;
-}
+} #_}
