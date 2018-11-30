@@ -84,6 +84,7 @@ sub parse_man_page { #_{
 # my $is_in_DESCRIPTION            = 0;
 # my $is_in_SEE_ALSO               = 0;
   my $in_pre                       = 0;
+  my $in_ul                        = 0;
 
   my @lines;
 # my @lines_description;
@@ -112,7 +113,7 @@ sub parse_man_page { #_{
     # Remove comments
       next if $line =~ m!^\.\\"!;
       $line =~ s/\\".*//;
-      $line =~ s/\.$//;
+#     $line =~ s/\.$//;    At least in .IP instructions, the dot at the end of a line cannot be removed.
 
       if (! $first_line_with_content_seen) { #_{
 
@@ -297,6 +298,18 @@ sub parse_man_page { #_{
         }
         next;
       } #_}
+      elsif (my ($bullet, $indent) = $line =~ /^\.IP +([^ ]+)(?: *)(.*) *$/i) { #_{
+        if ($pass == 2) {
+
+          unless ($in_ul) {
+            push @lines, "<ul>";
+          }
+          push @lines, "<li><b>TODO: $bullet</b>\n";
+
+          $in_ul = 1;
+        }
+        next;
+      } #_}
       elsif (my ($rest_br) = $line =~ /^\.BR +(.*)$/) { #_{
 
         if (my ($func, $sect, $what_is_this) = $rest_br =~ /^ *(\S+) +\((\d?)\) *(.*)$/) {
@@ -322,7 +335,12 @@ sub parse_man_page { #_{
       #      unless -rS option is given on command line
       #    - restore left margin and indentation
       #
+
         if ($pass == 2) {
+          if ($in_ul) {
+            push @lines, "</ul>\n";
+            $in_ul = 0;
+          }
           push @lines, '<p>';
         }
         next;
