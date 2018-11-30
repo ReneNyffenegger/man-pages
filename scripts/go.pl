@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 #
+#   See http://man7.org/linux/man-pages/man7/groff_man.7.html
+#
+#
 #   TODO
 #      getnetent.3 / memmove.3  (NAME spans over two lines)
 #
@@ -239,13 +242,13 @@ sub parse_man_page { #_{
       } #_}
       elsif (my ($bold) = $line =~ /^\.B +(.*)$/i) { #_{
         if ($pass == 2) {
-          push @lines, "<b>$bold</b>";
+          push @lines, "<b>$bold</b>\n";
         }
         next;
       } #_}
       elsif (my ($italic) = $line =~ /^\.I +(.*)$/i) { #_{
         if ($pass == 2) {
-          push @lines, "<i>$italic</i>";
+          push @lines, "<i>$italic</i>\n";
         }
         next;
       } #_}
@@ -366,6 +369,23 @@ sub parse_man_page { #_{
       } #_}
       else { #_{
         if ($pass == 2) { #_{
+
+
+          $line =~ s/\\\(aq/'/g;
+          $line =~ s/\\\(oq/‘/g; # Opening single quotation mark
+          $line =~ s/\\\(cq/’/g; # Closing single quotation mark
+          $line =~ s/\\\(dq/"/g;
+          $line =~ s/\\\(lq/“/g;
+          $line =~ s/\\\(rq/”/g;
+          $line =~ s/\\\(em/—/g;
+          $line =~ s/\\\(en/–/g;
+#         $line =~ s/\\\(ga/???/g;  # ASCII grave accent
+#         $line =~ s/\\\(ha/???/g;  # ASCII circumflex accent
+          $line =~ s/\\\(ti/~/g;
+          $line =~ s/\\\&//g;
+          $line =~ s/\\-/-/g;
+          $line =~ s/\\ /&nbsp;/g;
+          $line =~ s/\\\\/\\/g;
           
           if ($in_pre) {
             push @lines, "<br>$line";
