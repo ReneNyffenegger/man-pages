@@ -99,6 +99,7 @@ sub parse_man_page { #_{
 
   open (my $man_page_fh, '<', $name_dot_section) or die "Could not open $name_dot_section, dir = " . getcwd();
 
+
   while (my $line = <$man_page_fh>) { #_{
 
     if ($. == 1) { #_{
@@ -367,10 +368,10 @@ sub parse_man_page { #_{
         if ($pass == 2) { #_{
           
           if ($in_pre) {
-            push @lines, $line;
+            push @lines, "<br>$line";
           }
           else {
-            push @lines, "<br>$line";
+            push @lines, $line;
           }
           next;
 
@@ -403,6 +404,7 @@ sub parse_man_page { #_{
   if ($pass == 2) { #_{
 
     open my $html_fh, '>', "$out_dir/$name_dot_section.html" or die;
+    print_html_head($html_fh);
 
     my ($page_name, $section) = $name_dot_section =~ m!(.*)\.(\d)!;
     print $html_fh "$page_name ($section)\n";
@@ -586,4 +588,19 @@ sub html_index { #_{
   }
   
   close $html_fh;
+} #_}
+
+sub print_html_head { #_{
+  my $fh = shift;
+
+  print $fh "<head>
+  <style>
+    body {
+       width: 40em;
+    }
+
+  </style>
+</head>
+";
+
 } #_}
