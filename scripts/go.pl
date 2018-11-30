@@ -22,16 +22,15 @@ my $out_dir = '/home/rene/github/github/man-pages/out/';
 # arguments_test(); exit;
 main();
 
-
-sub main {
+sub main { #_{
 
   pass(1);
   pass(2);
 
   html_index();
 
-}
-sub pass {
+} #_}
+sub pass { #_{
   $pass = shift;
 
   find({
@@ -41,7 +40,7 @@ sub pass {
   );
 
 
-}
+} #_}
 
 # sub find_preprocess_callback {
 #   
@@ -50,7 +49,7 @@ sub pass {
 #    print "\$_                 $_\n";                # Name of the file (without path information)
 # }
 
-sub find_callback {
+sub find_callback { #_{
 
   return if $_ eq '.';
 
@@ -67,8 +66,7 @@ sub find_callback {
   parse_man_page($_)
 #   if $File::Find::name =~ /bzero.3$/
   ;
-}
-
+} #_}
 
 sub parse_man_page { #_{
 
@@ -254,20 +252,47 @@ sub parse_man_page { #_{
 
           my @args = arguments($rest);
 
-          my $b = 1;
+          set_arguments_alternatively('b', 'i', \@args, \@lines);
 
-          my $l = '';
-          for my $arg (@args) {
+       #  my $b = 1;
 
-            if ($b) {
-              $l .= "<b>$arg</b>"
-            }
-            else {
-              $l .= "<i>$arg</i>"
-            }
-            $b = 1-$b;
-          }
-          push @lines, $l;
+       #  my $l = '';
+       #  for my $arg (@args) {
+
+       #    if ($b) {
+       #      $l .= "<b>$arg</b>"
+       #    }
+       #    else {
+       #      $l .= "<i>$arg</i>"
+       #    }
+       #    $b = 1-$b;
+       #  }
+       #  push @lines, $l;
+
+        }
+        next;
+      } #_}
+      elsif (my ($ir) = $line =~ /^\.IR +(.*)$/i) { #_{
+        if ($pass == 2) {
+
+          my @args = arguments($ir);
+
+          set_arguments_alternatively('i', '', \@args, \@lines);
+
+       #  my $b = 1;
+
+       #  my $l = '';
+       #  for my $arg (@args) {
+
+       #    if ($b) {
+       #      $l .= "<b>$arg</b>"
+       #    }
+       #    else {
+       #      $l .= "<i>$arg</i>"
+       #    }
+       #    $b = 1-$b;
+       #  }
+       #  push @lines, $l;
 
         }
         next;
@@ -413,8 +438,8 @@ sub parse_man_page { #_{
 
   } #_}
 
-}
-sub encode_html {
+} #_}
+sub encode_html { #_{
   my $text = shift;
 
   $text =~ s/&/&amp;/g;
@@ -491,6 +516,43 @@ sub arguments { #_{
   push @ret, $part;
   return @ret;
 
+} #_}
+
+sub set_arguments_alternatively { #_{
+  my $tag_one   = shift;
+  my $tag_two   = shift;
+  my $args_ref  = shift;
+  my $lines_ref = shift;
+
+  my $toggle = 1;
+
+  my $l = '';
+  for my $arg (@$args_ref) {
+
+    if ($toggle) {
+       $l .= open_tag($tag_one) . $arg . close_tag($tag_one);
+    }
+    else {
+       $l .= open_tag($tag_two) . $arg . close_tag($tag_two);
+    }
+    $toggle = 1-$toggle;
+  }
+  push @$lines_ref, $l;
+
+} #_}
+
+sub open_tag { #_{
+  my $tag_name = shift;
+
+  return '' unless $tag_name;
+  return "<$tag_name>";
+} #_}
+
+sub close_tag { #_{
+  my $tag_name = shift;
+
+  return '' unless $tag_name;
+  return "</$tag_name>";
 } #_}
 
 sub html_index { #_{
