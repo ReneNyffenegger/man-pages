@@ -243,6 +243,12 @@ sub parse_man_page { #_{
         }
         next;
       } #_}
+      elsif (my ($italic) = $line =~ /^\.I +(.*)$/i) { #_{
+        if ($pass == 2) {
+          push @lines, "<i>$italic</i>";
+        }
+        next;
+      } #_}
       elsif (my ($rest) = $line =~ /^\.BI +(.*)$/i) { #_{
         if ($pass == 2) {
 
@@ -263,9 +269,6 @@ sub parse_man_page { #_{
           }
           push @lines, $l;
 
-#         push @lines, 'xxx ' . (join ' -- ', @args);
-
-#         push @lines, "<b>$bold</b>";
         }
         next;
       } #_}
